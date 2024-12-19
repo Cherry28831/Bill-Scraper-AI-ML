@@ -20,25 +20,36 @@ def extract_details(text):
 
     try:
         # Extract company name (assumes the first uppercase block near the top is the company name)
-        company_name_match = re.search(r'^[A-Z][A-Z &,-\.]+(?=\s+At\.)', text, re.MULTILINE)
+        company_name_match = re.search(r'^[A-Z][A-Z &,-\.]+(?:\s+Ltd.*)?(?=\s+At\.)', text, re.MULTILINE)
         details['Company Name'] = company_name_match.group(0).strip() if company_name_match else ""
 
         # Extracting other fields
-        details['Invoice No'] = re.search(r'Invoice No\.\s*:\s*(\d+)', text).group(1) if re.search(r'Invoice No\.\s*:\s*(\d+)', text) else ""
-        details['Date of Invoice'] = re.search(r'Date of Invoice\s*:\s*([\d-]+)', text).group(1) if re.search(r'Date of Invoice\s*:\s*([\d-]+)', text) else ""
-        details['GSTIN NO'] = re.search(r'GSTIN NO\s*:\s*([\w\d]+)', text).group(1) if re.search(r'GSTIN NO\s*:\s*([\w\d]+)', text) else ""
-        details['GSTIN'] = re.search(r'GSTIN\s*:\s*([\w\d]+)', text).group(1) if re.search(r'GSTIN\s*:\s*([\w\d]+)', text) else ""
-        details['HSN/SAC code'] = re.search(r'HSN/SAC\s+(\d+)', text).group(1) if re.search(r'HSN/SAC\s+(\d+)', text) else ""
-        details['Shipped to'] = re.search(r'Shipped to\s*:\s*(.+?)\s*FSSAI', text, re.DOTALL).group(1).strip() if re.search(r'Shipped to\s*:\s*(.+?)\s*FSSAI', text, re.DOTALL) else ""
-        details['Goods Description'] = re.search(r'DESCRIPTION OF GOODS\s+(.+?)\s+HSN/SAC', text, re.DOTALL).group(1).strip() if re.search(r'DESCRIPTION OF GOODS\s+(.+?)\s+HSN/SAC', text, re.DOTALL) else ""
-        details['Bags'] = re.search(r'BAGS\s+(\d+)', text).group(1) if re.search(r'BAGS\s+(\d+)', text) else ""
-        details['Quintal'] = re.search(r'QUINTAL\s+([\d.]+)', text).group(1) if re.search(r'QUINTAL\s+([\d.]+)', text) else ""
-        details['Rate'] = re.search(r'RATE\s+([\d.,]+)', text).group(1) if re.search(r'RATE\s+([\d.,]+)', text) else ""
-        details['Amount'] = re.search(r'AMOUNT\(`\s*\)\s+([\d.,]+)', text).group(1) if re.search(r'AMOUNT\(`\s*\)\s+([\d.,]+)', text) else ""
-        details['Transport'] = re.search(r'Transport\s*:\s*(.+?)\s+Despatch Date', text, re.DOTALL).group(1).strip() if re.search(r'Transport\s*:\s*(.+?)\s+Despatch Date', text, re.DOTALL) else ""
-        details['Vehicle No'] = re.search(r'Vehicle No\.\s*:\s*([\w\d]+)', text).group(1) if re.search(r'Vehicle No\.\s*:\s*([\w\d]+)', text) else ""
-        details['Licence No'] = re.search(r'Licence No\s*:\s*([\w\d]+)', text).group(1) if re.search(r'Licence No\s*:\s*([\w\d]+)', text) else ""
-        details['Mobile No'] = re.search(r'Mobile No\s*:\s*([\d]+)', text).group(1) if re.search(r'Mobile No\s*:\s*([\d]+)', text) else ""
+        details['Invoice No'] = re.search(r'Invoice No\.\s*[:\-]?\s*(\d+)', text).group(1) if re.search(r'Invoice No\.\s*[:\-]?\s*(\d+)', text) else ""
+        details['Date of Invoice'] = re.search(r'Date of Invoice\s*[:\-]?\s*([\d-]+)', text).group(1) if re.search(r'Date of Invoice\s*[:\-]?\s*([\d-]+)', text) else ""
+        details['GSTIN NO'] = re.search(r'GSTIN\s*NO\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'GSTIN\s*NO\s*[:\-]?\s*([\w\d]+)', text) else ""
+        details['GSTIN'] = re.search(r'GSTIN\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'GSTIN\s*[:\-]?\s*([\w\d]+)', text) else ""
+        details['HSN/SAC code'] = re.search(r'HSN/SAC\s*[:\-]?\s*(\d+)', text).group(1) if re.search(r'HSN/SAC\s*[:\-]?\s*(\d+)', text) else ""
+        
+        # Shipped to: Improved regex for multiline addresses
+        shipped_to_match = re.search(r'Shipped to\s*[:\-]?\s*([\s\S]+?)\s*FSSAI', text)
+        details['Shipped to'] = shipped_to_match.group(1).strip() if shipped_to_match else ""
+
+        # Goods Description
+        goods_description_match = re.search(r'DESCRIPTION OF GOODS\s*[:\-]?\s*([\s\S]+?)\s*HSN/SAC', text)
+        details['Goods Description'] = goods_description_match.group(1).strip() if goods_description_match else ""
+
+        # Bags, Quintal, Rate, Amount
+        details['Bags'] = re.search(r'BAGS\s*[:\-]?\s*(\d+)', text).group(1) if re.search(r'BAGS\s*[:\-]?\s*(\d+)', text) else ""
+        details['Quintal'] = re.search(r'QUINTAL\s*[:\-]?\s*([\d.]+)', text).group(1) if re.search(r'QUINTAL\s*[:\-]?\s*([\d.]+)', text) else ""
+        details['Rate'] = re.search(r'RATE\s*[:\-]?\s*([\d.,]+)', text).group(1) if re.search(r'RATE\s*[:\-]?\s*([\d.,]+)', text) else ""
+        details['Amount'] = re.search(r'AMOUNT\(`\s*\)\s*[:\-]?\s*([\d.,]+)', text).group(1) if re.search(r'AMOUNT\(`\s*\)\s*[:\-]?\s*([\d.,]+)', text) else ""
+
+        # Transport, Vehicle No, Licence No, Mobile No
+        details['Transport'] = re.search(r'Transport\s*[:\-]?\s*([\s\S]+?)\s+Despatch Date', text).group(1).strip() if re.search(r'Transport\s*[:\-]?\s*([\s\S]+?)\s+Despatch Date', text) else ""
+        details['Vehicle No'] = re.search(r'Vehicle No\.\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'Vehicle No\.\s*[:\-]?\s*([\w\d]+)', text) else ""
+        details['Licence No'] = re.search(r'Licence No\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'Licence No\s*[:\-]?\s*([\w\d]+)', text) else ""
+        details['Mobile No'] = re.search(r'Mobile No\s*[:\-]?\s*([\d]+)', text).group(1) if re.search(r'Mobile No\s*[:\-]?\s*([\d]+)', text) else ""
+
     except Exception as e:
         print(f"Error extracting data: {e}")
     

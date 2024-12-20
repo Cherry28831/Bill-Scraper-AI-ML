@@ -64,7 +64,7 @@ def extract_details(text):
         gstin_match = re.search(gstin_pattern, text)
         details['GSTIN NO'] = gstin_match.group(1) if gstin_match else ""
 
-        # Extract company name
+        # Extract company name without using look-behind
         company_name_pattern = r"TAX INVOICE\s+(.*?)\s+At"
         company_name_match = re.search(company_name_pattern, text)
         details['Company Name'] = company_name_match.group(1).strip() if company_name_match else ""
@@ -79,7 +79,7 @@ def extract_details(text):
         date_of_invoice_match = re.search(date_of_invoice_pattern, text)
         details['Date of Invoice'] = date_of_invoice_match.group(1).strip() if date_of_invoice_match else ""
 
-        # Extract Shipped To address
+        # Extract Shipped to address
         shipped_to_pattern = r"Shipped to\s*:\s*(.*?)\s+GSTIN"
         shipped_to_match = re.search(shipped_to_pattern, text)
         details['Shipped to'] = shipped_to_match.group(1).strip() if shipped_to_match else ""
@@ -97,17 +97,17 @@ def extract_details(text):
                 details['Bags'].append(item[2].strip())
                 details['Quintal'].append(item[3].strip())
                 details['Rate'].append(item[4].strip())
+                # For Amount, you might need a specific extraction logic based on your invoice format.
                 amount_pattern = r'(?<=\s)\d{1,3}(?:,\d{3})*(?:\.\d{2})?'
                 amount_matches = re.findall(amount_pattern, text)
                 details['Amount'].append(amount_matches.pop(0) if amount_matches else "0")
 
-            print(f"Extracted Goods: {details['Goods Description']}")  
+            print(f"Extracted Goods: {details['Goods Description']}")  # Debugging output
             
     except Exception as e:
         print(f"Error extracting data: {e}")
 
     return details
-
 
 # Function to write extracted details to an Excel file
 def write_to_excel(details, output_path):

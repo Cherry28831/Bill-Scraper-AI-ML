@@ -25,50 +25,47 @@ def extract_full_text(pdf_path):
             text += page.extract_text()  # Extracts general text from each page
     return text
 
+def extract_text_and_debug(pdf_path):
+    text = extract_full_text(pdf_path)
+
+    # Use OCR if the text extraction is incomplete or empty
+    if not text.strip():
+        print("No text found using standard extraction. Switching to OCR.")
+        text = extract_text_from_image(pdf_path)
+
+    print("Extracted text for debugging:")
+    print(text[:1000])  # Print the first 1000 characters for inspection
+    return text
+
 # Function to extract relevant details using regex
 def extract_details(text):
     details = {}
 
     try:
-        # Extract company name (assumes the first uppercase block near the top is the company name)
+        # Extract the last GSTIN
+        gstin_pattern = r"\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}\b"
+        gstin_matches = re.findall(gstin_pattern, text)
+        details['GSTIN'] = gstin_matches[-1] if gstin_matches else ""
+
+        # Extract other fields
+        details['GSTIN NO'] = re.search(r'GSTIN\s*NO\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'GSTIN\s*NO\s*[:\-]?\s*([\w\d]+)', text) else ""
+        details['HSN/SAC'] = re.findall(r"\b[0-9]{8}\b", text)  # List of all HSN/SAC codes
+
+        # Extract company name and other fields
         company_name_match = re.search(r'^[A-Z][A-Z &,-\.]+(?:\s+Ltd.*)?(?=\s+At\.)', text, re.MULTILINE)
         details['Company Name'] = company_name_match.group(0).strip() if company_name_match else ""
-        # Extracting other fields
         details['Invoice No'] = re.search(r'Invoice No\.\s*[:\-]?\s*(\d+)', text).group(1) if re.search(r'Invoice No\.\s*[:\-]?\s*(\d+)', text) else ""
         details['Date of Invoice'] = re.search(r'Date of Invoice\s*[:\-]?\s*([\d\-]+)', text).group(1) if re.search(r'Date of Invoice\s*[:\-]?\s*([\d\-]+)', text) else ""
-        details['GSTIN NO'] = re.search(r'GSTIN\s*NO\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'GSTIN\s*NO\s*[:\-]?\s*([\w\d]+)', text) else ""
-        details['GSTIN'] = re.search(r'GSTIN\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'GSTIN\s*[:\-]?\s*([\w\d]+)', text) else ""
-        details['HSN/SAC code'] = re.search(r'HSN/SAC\s*[:\-]?\s*(\d+)', text).group(1) if re.search(r'HSN/SAC\s*[:\-]?\s*(\d+)', text) else ""
-        
-        # Extract Shipped to address
+
+        # Extract "Shipped to" address
         shipped_to_match = re.search(r'Shipped to\s*[:\-]?\s*([\s\S]+?)\s*FSSAI', text)
         details['Shipped to'] = shipped_to_match.group(1).strip() if shipped_to_match else ""
 
-        # Goods Description, Bags, Quintal, Rate, Amount
-        goods_description_match = re.findall(r'([A-Za-z\s]+)\s+10063090\s+(\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\,\d+)', text)
+        # Extract goods details
+        goods_description_match = re.findall(r'([A-Za-z\s]+)\s+\d+\s+(\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+([\d,]+)', text)
+        details['Goods Description'], details['Bags'], details['Quintal'], details['Rate'], details['Amount'] = zip(*goods_description_match) if goods_description_match else ([], [], [], [], [])
 
-        # Initialize separate lists for each field
-        goods_descriptions = []
-        bags = []
-        quintals = []
-        rates = []
-        amounts = []
-
-        for match in goods_description_match:
-            goods_descriptions.append(match[0].strip())
-            bags.append(match[1])
-            quintals.append(match[2])
-            rates.append(match[3])
-            amounts.append(match[4])
-
-        # Add them as separate columns to the details dictionary
-        details['Goods Description'] = goods_descriptions
-        details['Bags'] = bags
-        details['Quintal'] = quintals
-        details['Rate'] = rates
-        details['Amount'] = amounts
-
-        # Transport, Vehicle No, Licence No, Mobile No
+        # Transport and other fields
         details['Transport'] = re.search(r'Transport\s*[:\-]?\s*([\s\S]+?)\s+Despatch Date', text).group(1).strip() if re.search(r'Transport\s*[:\-]?\s*([\s\S]+?)\s+Despatch Date', text) else ""
         details['Vehicle No'] = re.search(r'Vehicle No\.\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'Vehicle No\.\s*[:\-]?\s*([\w\d]+)', text) else ""
         details['Licence No'] = re.search(r'Licence No\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'Licence No\s*[:\-]?\s*([\w\d]+)', text) else ""
@@ -76,14 +73,11 @@ def extract_details(text):
 
     except Exception as e:
         print(f"Error extracting data: {e}")
-    
+
     return details
 
 # Function to write extracted details to an Excel file
 def write_to_excel(details, output_path):
-    df = pd.DataFrame([details])
-    df.to_excel(output_path, index=False)
-
     goods_df = pd.DataFrame({
         'Goods Description': details['Goods Description'],
         'Bags': details['Bags'],
@@ -91,11 +85,19 @@ def write_to_excel(details, output_path):
         'Rate': details['Rate'],
         'Amount': details['Amount']
     })
-    
-    # Merge the rest of the details into the goods dataframe
-    for column in ['Company Name', 'Invoice No', 'Date of Invoice', 'GSTIN NO', 'GSTIN', 'HSN/SAC code', 'Shipped to', 'Transport', 'Vehicle No', 'Licence No', 'Mobile No']:
-        goods_df[column] = details.get(column, "")
-    
+
+    # Ensure all other fields are repeated for each row
+    for column in ['Company Name', 'Invoice No', 'Date of Invoice', 'GSTIN NO', 'GSTIN', 'HSN/SAC', 
+                   'Shipped to', 'Transport', 'Vehicle No', 'Licence No', 'Mobile No']:
+        value = details.get(column, "")
+        if isinstance(value, list):  # If it's a list, ensure its length matches the DataFrame
+            if len(value) == len(goods_df):
+                goods_df[column] = value
+            else:
+                print(f"Warning: Length mismatch for column '{column}'. Skipping.")
+        else:
+            goods_df[column] = [value] * len(goods_df)  # Broadcast single value to all rows
+
     # Save to Excel
     goods_df.to_excel(output_path, index=False)
 

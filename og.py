@@ -62,7 +62,7 @@ def extract_details(text):
         details['Shipped to'] = shipped_to_match.group(1).strip() if shipped_to_match else ""
 
         # Extract goods details
-        goods_description_match = re.findall(r'([A-Za-z\s]+)\s+\d+\s+(\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+([\d,]+)', text)
+        goods_description_match = re.findall(r'([A-Za-z\s]+(?:\s+\([A-Za-z\s]+\))?)\s+\d+\s+(\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+([\d,]+)', text)
         details['Goods Description'], details['Bags'], details['Quintal'], details['Rate'], details['Amount'] = zip(*goods_description_match) if goods_description_match else ([], [], [], [], [])
 
         # Transport and other fields
@@ -70,6 +70,13 @@ def extract_details(text):
         details['Vehicle No'] = re.search(r'Vehicle No\.\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'Vehicle No\.\s*[:\-]?\s*([\w\d]+)', text) else ""
         details['Licence No'] = re.search(r'Licence No\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'Licence No\s*[:\-]?\s*([\w\d]+)', text) else ""
         details['Mobile No'] = re.search(r'Mobile No\s*[:\-]?\s*([\d]+)', text).group(1) if re.search(r'Mobile No\s*[:\-]?\s*([\d]+)', text) else ""
+        details['FSSAI'] = re.search(r'FSSAI\s*[:\-]?\s*([\d]+)', text).group(1) if re.search(r'FSSAI\s*[:\-]?\s*([\d]+)', text) else ""
+        details['PAN NO'] = re.search(r'PAN NO\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'PAN NO\s*[:\-]?\s*([\w\d]+)', text) else ""
+        details['TAN NO'] = re.search(r'TAN NO\s*[:\-]?\s*([\w\d\-]+)', text).group(1) if re.search(r'TAN NO\s*[:\-]?\s*([\w\d\-]+)', text) else ""
+        details['STD'] = re.search(r'STD\s*[:\-]?\s*([\d\-]+)', text).group(1) if re.search(r'STD\s*[:\-]?\s*([\d\-]+)', text) else ""
+        details['Place of Supply'] = re.search(r'Place of Supply\s*[:\-]?\s*([\w\s\(\)\d]+)(?=\s+Date of Invoice)', text).group(1).strip() if re.search(r'Place of Supply\s*[:\-]?\s*([\w\s\(\)\d]+)(?=\s+Date of Invoice)', text) else ""
+        details['Station'] = re.search(r'Station\s*[:\-]?\s*([\w\s]+)(?=\s+Billed to)', text).group(1).strip() if re.search(r'Station\s*[:\-]?\s*([\w\s]+)(?=\s+Billed to)', text) else ""
+
 
     except Exception as e:
         print(f"Error extracting data: {e}")
@@ -87,8 +94,8 @@ def write_to_excel(details, output_path):
     })
 
     # Ensure all other fields are repeated for each row
-    for column in ['Company Name', 'Invoice No', 'Date of Invoice', 'GSTIN NO', 'GSTIN', 'HSN/SAC', 
-                   'Shipped to', 'Transport', 'Vehicle No', 'Licence No', 'Mobile No']:
+    for column in ['Company Name', 'Invoice No', 'Date of Invoice', 'GSTIN NO', 'FSSAI', 'PAN NO', 'TAN NO', 'Place of Supply', 'Station',
+                   'GSTIN', 'HSN/SAC', 'Shipped to', 'Transport', 'Vehicle No', 'Licence No', 'Mobile No', 'STD']:
         value = details.get(column, "")
         if isinstance(value, list):  # If it's a list, ensure its length matches the DataFrame
             if len(value) == len(goods_df):

@@ -93,6 +93,11 @@ def extract_details(text):
         details['Vehicle No'] = re.search(r'Vehicle No\.\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'Vehicle No\.\s*[:\-]?\s*([\w\d]+)', text) else ""
         details['Licence No'] = re.search(r'Licence No\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'Licence No\s*[:\-]?\s*([\w\d]+)', text) else ""
         details['Mobile No'] = re.search(r'Mobile No\s*[:\-]?\s*([\d]+)', text).group(1) if re.search(r'Mobile No\s*[:\-]?\s*([\d]+)', text) else ""
+        details['FSSAI'] = re.search(r'FSSAI\s*[:\-]?\s*([\d]+)', text).group(1) if re.search(r'FSSAI\s*[:\-]?\s*([\d]+)', text) else ""
+        details['PAN NO'] = re.search(r'PAN NO\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'PAN NO\s*[:\-]?\s*([\w\d]+)', text) else ""
+        details['TAN NO'] = re.search(r'TAN NO\s*[:\-]?\s*([\w\d\-]+)', text).group(1) if re.search(r'TAN NO\s*[:\-]?\s*([\w\d\-]+)', text) else ""
+        details['STD'] = re.search(r'STD\s*[:\-]?\s*([\d\-]+)', text).group(1) if re.search(r'STD\s*[:\-]?\s*([\d\-]+)', text) else ""
+        details['Place of Supply'] = re.search(r'Place of Supply\s*[:\-]?\s*([\w\s\(\)\d]+)(?=\s+Date of Invoice)', text).group(1).strip() if re.search(r'Place of Supply\s*[:\-]?\s*([\w\s\(\)\d]+)(?=\s+Date of Invoice)', text) else ""
 
     except Exception as e:
         print(f"Error extracting data: {e}")
@@ -122,8 +127,8 @@ def write_to_excel(all_details, output_path):
             'Amount': amount,
         })
 
-        for column in ['Company Name', 'Invoice No', 'Date of Invoice', 'GSTIN NO', 'GSTIN',
-                       'Shipped to', 'Transport', 'Vehicle No', 'Licence No', 'Mobile No']:
+        for column in ['Company Name', 'Invoice No', 'FSSAI', 'Date of Invoice', 'GSTIN NO', 'GSTIN', 'PAN NO', 'TAN NO', 
+                       'STD', 'Shipped to', 'Transport', 'Place of Supply', 'Vehicle No', 'Licence No', 'Mobile No']:
             value = details.get(column, "")
             goods_df[column] = value  # Broadcast single value to all rows
 

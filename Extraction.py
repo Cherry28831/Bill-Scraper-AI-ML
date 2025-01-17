@@ -6,6 +6,11 @@ import pandas as pd
 from tkinter import Tk
 from tkinter.filedialog import askopenfilenames
 
+def replace_empty_with_dash(df, columns):
+    for column in columns:
+        df[column] = df[column].replace("", "-").replace(".", "-").replace("Total", "-").replace("Advance", "-")
+    return df
+
 # Function to extract text from images using OCR (if needed)
 def extract_text_from_image(pdf_path):
     text = ""
@@ -77,23 +82,21 @@ def extract_details(text):
                     details['Quintal'].append(quintal)
                     details['Rate'].append(rate)
                     details['Amount'].append(amount)
-                else:
-                    details['Goods Description'].append(match[0] if len(match) > 0 else "")
-                    details['HSN/SAC'].append(match[1] if len(match) > 1 else "")
-                    details['Bags'].append(match[2] if len(match) > 2 else "")
-                    details['Pack'].append(match[3] if len(match) > 3 else "")
-                    details['Quintal'].append(match[4] if len(match) > 4 else "")
-                    details['Rate'].append(match[5] if len(match) > 5 else "")
-                    details['Amount'].append(0.0)
 
+        # Updated regex pattern for FSSAI to accommodate both formats
+        fssai_match = re.search(r'FSSAI\s*NO\.?\s*[-]?\s*([\d]+)|FSSAI\s*[-]?\s*([\d]+)', text)
+        if fssai_match:
+            details['FSSAI'] = fssai_match.group(1) or fssai_match.group(2)
         else:
-            details['Goods Description'], details['HSN/SAC'], details['Bags'], details['Pack'], details['Quintal'], details['Rate'], details['Amount'] = [], [], [], [], [], [], []
+            details['FSSAI'] = ""
 
+        # Other fields extraction remains unchanged...
         details['Transport'] = re.search(r'Transport\s*[:\-]?\s*([\s\S]+?)\s+Despatch Date', text).group(1).strip() if re.search(r'Transport\s*[:\-]?\s*([\s\S]+?)\s+Despatch Date', text) else ""
         details['Vehicle No'] = re.search(r'Vehicle No\.\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'Vehicle No\.\s*[:\-]?\s*([\w\d]+)', text) else ""
         details['Licence No'] = re.search(r'Licence No\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'Licence No\s*[:\-]?\s*([\w\d]+)', text) else ""
         details['Mobile No'] = re.search(r'Mobile No\s*[:\-]?\s*([\d]+)', text).group(1) if re.search(r'Mobile No\s*[:\-]?\s*([\d]+)', text) else ""
-        details['FSSAI'] = re.search(r'FSSAI\s*[:\-]?\s*([\d]+)', text).group(1) if re.search(r'FSSAI\s*[:\-]?\s*([\d]+)', text) else ""
+        
+        # Continue extracting other fields...
         details['PAN NO'] = re.search(r'PAN NO\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'PAN NO\s*[:\-]?\s*([\w\d]+)', text) else ""
         details['TAN NO'] = re.search(r'TAN NO\s*[:\-]?\s*([\w\d\-]+)', text).group(1) if re.search(r'TAN NO\s*[:\-]?\s*([\w\d\-]+)', text) else ""
         details['STD'] = re.search(r'STD\s*[:\-]?\s*([\d\-]+)', text).group(1) if re.search(r'STD\s*[:\-]?\s*([\d\-]+)', text) else ""
@@ -127,8 +130,9 @@ def write_to_excel(all_details, output_path):
             'Amount': amount,
         })
 
-        for column in ['Company Name', 'Invoice No', 'FSSAI', 'Date of Invoice', 'GSTIN NO', 'GSTIN', 'PAN NO', 'TAN NO', 
-                       'STD', 'Shipped to', 'Transport', 'Place of Supply', 'Vehicle No', 'Licence No', 'Mobile No']:
+        for column in ['Company Name', 'Invoice No', 'FSSAI', 'Date of Invoice', 'GSTIN NO', 'GSTIN', 
+                       'PAN NO', 'TAN NO', 'STD', 'Shipped to', 'Transport', 
+                       'Place of Supply', 'Vehicle No', 'Licence No', 'Mobile No']:
             value = details.get(column, "")
             goods_df[column] = value  # Broadcast single value to all rows
 
@@ -136,6 +140,9 @@ def write_to_excel(all_details, output_path):
 
     # Concatenate all DataFrames into one
     final_df = pd.concat(all_data_frames, ignore_index=True)
+
+    # Replace empty values with a dash in specified columns
+    final_df = replace_empty_with_dash(final_df, ['Transport', 'Place of Supply', 'Vehicle No', 'Licence No', 'Mobile No'])
 
     # Save to Excel
     final_df.to_excel(output_path, index=False)
@@ -153,7 +160,7 @@ def main():
         print(f"Processing {pdf_path}...")
         
         text = extract_full_text(pdf_path)
-
+        
         if not text.strip():
             print("No text found in the PDF. Using OCR for text extraction.")
             text = extract_text_from_image(pdf_path)

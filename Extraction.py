@@ -50,8 +50,18 @@ def extract_details(text):
 
         details['GSTIN NO'] = re.search(r'GSTIN\s*NO\s*[:\-]?\s*([\w\d]+)', text).group(1) if re.search(r'GSTIN\s*NO\s*[:\-]?\s*([\w\d]+)', text) else ""
         
-        company_name_match = re.search(r'^[A-Z][A-Z &,-\.]+(?:\s+Ltd.*)?(?=\s+At\.)', text, re.MULTILINE)
-        details['Company Name'] = company_name_match.group(0).strip() if company_name_match else ""
+        company_name_match = re.search(
+            r'^(?:BILL OF SUPPLY|TAX INVOICE)\s*[\r\n]?(M/s\s+[A-Z][A-Z0-9 &,-\.]+|[A-Z][A-Z0-9 &,-\.]+)',
+            text,
+            re.MULTILINE
+        )
+        
+        if company_name_match:
+            details['Company Name'] = company_name_match.group(1).strip()
+        else:
+            details['Company Name'] = "N/A"  # Default if no match is found
+
+
         details['Invoice No'] = re.search(r'Invoice No\.\s*[:\-]?\s*(\d+)', text).group(1) if re.search(r'Invoice No\.\s*[:\-]?\s*(\d+)', text) else ""
         details['Date of Invoice'] = re.search(r'Date of Invoice\s*[:\-]?\s*([\d\-]+)', text).group(1) if re.search(r'Date of Invoice\s*[:\-]?\s*([\d\-]+)', text) else ""
 
